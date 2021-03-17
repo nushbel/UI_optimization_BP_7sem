@@ -6,7 +6,12 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    connect(ui->plot, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(mousePos(QMouseEvent*)));
+    connect(ui->plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(mouseClick(QMouseEvent*)));
     Plot(ui->plot);
+    x0 = -10^5;
+    y0 = -10^5;
+    startPointType = 1;
 }
 
 MainWindow::~MainWindow()
@@ -15,6 +20,7 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::Plot(QCustomPlot * customPlot){
+
       customPlot->clearPlottables();
       customPlot->axisRect()->setupFullAxesBox(true);
       customPlot->xAxis->setLabel("x");
@@ -104,11 +110,12 @@ void MainWindow::on_pushButton_optimize_clicked()
     area.left = {area_xl, area_yl};
     area.right = {area_xr, area_yr};
 
-    double x0 = ui->lineEdit_x0->text().toDouble();
-    double y0 = ui->lineEdit_y0->text().toDouble();
-    x0y0 = {x0, y0};
-
-
+    if (startPointType == 1)
+    {
+        x0 = ui->lineEdit_x0->text().toDouble();
+        y0 = ui->lineEdit_y0->text().toDouble();
+        x0y0 = {x0, y0};
+    }
 
     switch (fType) {
             case 1:
@@ -124,6 +131,8 @@ void MainWindow::on_pushButton_optimize_clicked()
             }
         }
 
+    Plot(ui->plot);
+    ui->plot->replot();
 
     switch (stopType) {
             case 1:
@@ -153,16 +162,6 @@ void MainWindow::on_pushButton_optimize_clicked()
         double a = result[0];
         double b = result[1];
 
-        /*
-        std::cout << "number of iteration: " << iterNum << std::endl;
-        std::cout << "arg min f(x): (";
-
-        for (int i = 0; i < 2; ++i) {
-            std::cout << (result[i]) << " ";
-        }
-        std::cout  << ")" << std::endl;
-        */
-
         double fInArgMin = f->eval(result);
 
         ui->label_consoleResult->setText("Result\nArg min:\n(" + QString::number(a) + ", " + QString::number(b) + ")\nFunction in arg min:\n" + QString::number(fInArgMin) + "\nNumber of iterations:\n" + QString::number(iterNum));
@@ -181,4 +180,76 @@ void MainWindow::on_pushButton_optimize_clicked()
 
         ui->plot->replot();
 
+}
+
+void MainWindow::mousePos(QMouseEvent* event)
+{
+
+}
+
+void MainWindow::mouseClick(QMouseEvent* event)
+{
+    if (startPointType == 2)
+    {
+    QString num, num2;
+    ui->plot->mouseMove(event);
+    geomx = area_xl + (area_xr-area_xl)*(double(event->x()) - 52.)/413;
+    geomy = -(area_yl + (area_yr-area_yl)*(double(event->y()) - 14.)/454);
+    ui->label_x0y0->setText("x_0 = " +  QString::number(geomx) + "\ny_0 = " + QString::number(geomy) + "\n");
+    x0 = geomx;
+    y0 = geomy;
+    x0y0 = {x0, y0};
+    }
+
+}
+
+void MainWindow::on_pushButton_plot_clicked()
+{
+
+    ui->label_x0y0->setText("Click on the graph to select \na starting point");
+    QString combobox_func = ui->comboBox_func->currentText();
+        if(combobox_func == "f(x, y) = x^2 + y^2")
+        {
+            fType = 1;
+        }
+        else if(combobox_func == "f(x, y) = y^2 + cos(x + y) + 1")
+        {
+            fType = 2;
+        }
+
+        area_xl = ui->lineEdit_xleft->text().toDouble();
+        area_xr = ui->lineEdit_xright->text().toDouble();
+        area_yl = ui->lineEdit_yleft->text().toDouble();
+        area_yr = ui->lineEdit_yright->text().toDouble();
+
+        area.left = {area_xl, area_yl};
+        area.right = {area_xr, area_yr};
+
+
+        switch (fType) {
+                case 1:
+                {
+                    f = new Function1();
+                    break;
+                }
+                case 2:
+                {
+                    f = new Function2();
+                    break;
+                }
+            }
+        Plot(ui->plot);
+        ui->plot->replot();
+}
+
+void MainWindow::on_tabWidget_tabBarClicked(int index)
+{
+    if (index == 0)
+    {
+        startPointType = 1;
+    }
+    else
+    {
+        startPointType = 2;
+    }
 }
